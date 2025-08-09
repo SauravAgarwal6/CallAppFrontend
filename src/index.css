@@ -1,62 +1,72 @@
-/* src/App.css */
+/* General Body Styles */
 body {
-  font-family: sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   background-color: #f0f2f5;
+  margin: 0;
+  padding: 1rem;
   display: flex;
   justify-content: center;
-  align-items: center;
-  height: 100vh;
-  margin: 0;
+  align-items: flex-start; /* Align to top on mobile */
+  min-height: 100vh;
+  box-sizing: border-box;
 }
 
+/* --- Form Styles (Login/Signup) --- */
 .form-container {
   background-color: white;
   padding: 2rem;
   border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  width: 350px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  width: 100%;
+  max-width: 400px;
+  box-sizing: border-box;
   text-align: center;
+  margin-top: 2rem;
 }
 
 form h1 {
   margin-bottom: 1.5rem;
+  font-size: 1.8rem;
+  color: #333;
 }
 
 form input {
   width: 100%;
-  padding: 12px;
+  padding: 14px;
   margin-bottom: 1rem;
   border: 1px solid #ddd;
   border-radius: 6px;
-  box-sizing: border-box; /* Important */
+  box-sizing: border-box;
+  font-size: 1rem;
 }
 
 form button {
   width: 100%;
-  padding: 12px;
+  padding: 14px;
   border: none;
   border-radius: 6px;
   background-color: #007bff;
   color: white;
-  font-size: 16px;
+  font-size: 1rem;
+  font-weight: bold;
   cursor: pointer;
   margin-bottom: 1rem;
+  transition: background-color 0.2s;
 }
 
 form button:hover {
   background-color: #0056b3;
 }
 
-/* src/App.css */
-
+/* --- Homepage Styles --- */
 .homepage-container {
   width: 100%;
   max-width: 600px;
-  margin: 2rem auto;
-  padding: 2rem;
+  padding: 1.5rem;
   background-color: white;
   border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  box-sizing: border-box;
 }
 
 .homepage-header {
@@ -72,43 +82,16 @@ form button:hover {
   background-color: #dc3545;
   color: white;
   border: none;
-  padding: 0.5rem 1rem;
+  padding: 0.6rem 1.2rem;
   border-radius: 5px;
   cursor: pointer;
+  font-weight: bold;
+  transition: background-color 0.2s;
 }
 .logout-button:hover {
   background-color: #c82333;
 }
 
-.add-contact-form form {
-  display: flex;
-  margin-bottom: 2rem;
-}
-.add-contact-form input {
-  flex-grow: 1;
-  margin-right: 1rem;
-  margin-bottom: 0;
-}
-.add-contact-form button {
-  width: auto;
-  margin-bottom: 0;
-}
-
-.contact-list .contact-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 1rem;
-  border: 1px solid #eee;
-  border-radius: 5px;
-  margin-bottom: 0.5rem;
-}
-
-/* Add to bottom of src/App.css */
-.call-buttons {
-  display: flex;
-  gap: 0.5rem;
-}
 .share-id-container {
   background-color: #e9ecef;
   border: 1px solid #dee2e6;
@@ -131,7 +114,47 @@ form button:hover {
   font-size: 1.1rem;
   color: #495057;
 }
-/* Add to bottom of src/App.css */
+
+.add-contact-form form {
+  display: flex;
+  margin-bottom: 2rem;
+}
+.add-contact-form input {
+  flex-grow: 1;
+  margin-right: 1rem;
+  margin-bottom: 0;
+}
+.add-contact-form button {
+  width: auto;
+  margin-bottom: 0;
+}
+
+.video-container {
+  display: flex;
+  flex-direction: column; /* Stack videos on mobile */
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+
+.video video {
+  border: 2px solid #ddd;
+  border-radius: 8px;
+  width: 100%; /* Make video responsive */
+  max-width: 300px;
+  background-color: #000;
+}
+
+.contact-list .contact-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem;
+  border: 1px solid #eee;
+  border-radius: 5px;
+  margin-bottom: 0.5rem;
+}
+
 .contact-info {
   display: flex;
   align-items: center;
@@ -143,12 +166,75 @@ form button:hover {
   width: 10px;
   border-radius: 50%;
   display: inline-block;
+  flex-shrink: 0;
 }
 
 .status-indicator.online {
-  background-color: #28a745; /* green */
+  background-color: #28a745;
 }
 
 .status-indicator.offline {
-  background-color: #6c757d; /* grey */
+  background-color: #6c757d;
+}
+
+.call-buttons {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.call-button, .hangup-button {
+  padding: 0.6rem 1rem;
+  border: none;
+  border-radius: 5px;
+  color: white;
+  cursor: pointer;
+  font-weight: bold;
+  transition: background-color 0.2s;
+}
+
+.call-button {
+  background-color: #28a745;
+}
+.call-button:hover {
+  background-color: #218838;
+}
+
+.hangup-button {
+  background-color: #dc3545;
+}
+
+.call-notification {
+  position: fixed;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: white;
+  padding: 2rem;
+  border-radius: 8px;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+  text-align: center;
+  z-index: 1000;
+  width: 90%;
+  max-width: 350px;
+}
+.call-notification button {
+  background-color: #28a745;
+  color: white;
+  font-size: 1.2rem;
+  padding: 1rem 2rem;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  margin-top: 1rem;
+}
+
+/* --- Media Query for Larger Screens --- */
+@media (min-width: 768px) {
+  .video-container {
+    flex-direction: row; /* Videos side-by-side on desktop */
+  }
+
+  body {
+    align-items: center; /* Center vertically on desktop */
+  }
 }

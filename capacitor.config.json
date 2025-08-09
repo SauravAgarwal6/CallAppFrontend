@@ -1,0 +1,9 @@
+{
+  "appId": "com.saurav.callapp",
+  "appName": "CallApp",
+  "webDir": "dist",
+  "server": {
+    "url": "https://call-app-by-saurav.netlify.app",
+    "cleartext": true
+  }
+}
