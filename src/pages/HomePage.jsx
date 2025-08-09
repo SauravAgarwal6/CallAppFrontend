@@ -12,7 +12,8 @@ function HomePage() {
   const [contacts, setContacts] = useState([]);
   const [stream, setStream] = useState(null);
   const [myShareId, setMyShareId] = useState('');
-  const [addContactShareId, setAddContactShareId] = useState(''); // <-- State for the input field
+  const [addContactShareId, setAddContactShareId] = useState('');
+  const [onlineUsers, setOnlineUsers] = useState([]); // <-- New state for online users
   const [receivingCall, setReceivingCall] = useState(false);
   const [caller, setCaller] = useState("");
   const [callerSignal, setCallerSignal] = useState();
@@ -38,6 +39,11 @@ function HomePage() {
         }
     }
     
+    // Listen for the list of online users from the server
+    socket.on('getUsers', (users) => {
+        setOnlineUsers(users);
+    });
+
     socket.on("call-incoming", (data) => {
         setReceivingCall(true);
         setCaller(data.from);
@@ -51,7 +57,9 @@ function HomePage() {
     
     fetchContacts();
 
+    // Cleanup listeners when the component unmounts
     return () => {
+        socket.off("getUsers");
         socket.off("call-incoming");
         socket.off("call-ended");
     };
@@ -66,14 +74,13 @@ function HomePage() {
     }
   };
 
-  // Restored Add Contact Handler
   const handleAddContact = async (e) => {
     e.preventDefault();
     if (!addContactShareId) return;
     try {
       await api.post('/contacts/add', { shareId: addContactShareId });
-      setAddContactShareId(''); // Clear the input field
-      fetchContacts(); // Refresh the contact list
+      setAddContactShareId('');
+      fetchContacts();
       alert('Contact added!');
     } catch (error) {
       alert(error.response.data.msg || 'Failed to add contact');
@@ -182,7 +189,6 @@ function HomePage() {
         <strong>{myShareId}</strong>
       </div>
 
-      {/* Restored Add Contact Form */}
       <div className="add-contact-form">
         <form onSubmit={handleAddContact}>
           <input
@@ -207,19 +213,26 @@ function HomePage() {
       </div>
 
       <div className="contact-list">
-        {contacts.length > 0 ? contacts.map((contact) => (
-          <div key={contact._id} className="contact-item">
-            <p>{contact.username}</p>
-            {callAccepted && otherUserId === contact._id ? (
-              <button className="hangup-button" onClick={leaveCall}>Hang Up</button>
-            ) : !callAccepted ? (
-              <div className="call-buttons">
-                <button className="call-button" onClick={() => callUser(contact._id, 'video')}>Video Call</button>
-                <button className="call-button" onClick={() => callUser(contact._id, 'voice')}>Voice Call</button>
+        {contacts.length > 0 ? contacts.map((contact) => {
+          // Check if this contact's ID is in the onlineUsers array
+          const isOnline = onlineUsers.some(user => user.userId === contact._id);
+          return (
+            <div key={contact._id} className="contact-item">
+              <div className="contact-info">
+                <span className={`status-indicator ${isOnline ? 'online' : 'offline'}`}></span>
+                <p>{contact.username}</p>
               </div>
-            ) : null}
-          </div>
-        )) : <p>You have no contacts yet. Add one using their Share ID.</p>}
+              {callAccepted && otherUserId === contact._id ? (
+                <button className="hangup-button" onClick={leaveCall}>Hang Up</button>
+              ) : !callAccepted ? (
+                <div className="call-buttons">
+                  <button className="call-button" onClick={() => callUser(contact._id, 'video')}>Video Call</button>
+                  <button className="call-button" onClick={() => callUser(contact._id, 'voice')}>Voice Call</button>
+                </div>
+              ) : null}
+            </div>
+          )
+        }) : <p>You have no contacts yet. Add one using their Share ID.</p>}
       </div>
 
       {receivingCall && !callAccepted ? (

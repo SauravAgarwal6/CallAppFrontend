@@ -131,3 +131,24 @@ form button:hover {
   font-size: 1.1rem;
   color: #495057;
 }
+/* Add to bottom of src/App.css */
+.contact-info {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.status-indicator {
+  height: 10px;
+  width: 10px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.status-indicator.online {
+  background-color: #28a745; /* green */
+}
+
+.status-indicator.offline {
+  background-color: #6c757d; /* grey */
+}
