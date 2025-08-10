@@ -13,13 +13,17 @@ function HomePage() {
   const [stream, setStream] = useState(null);
   const [myShareId, setMyShareId] = useState('');
   const [addContactShareId, setAddContactShareId] = useState('');
-  const [onlineUsers, setOnlineUsers] = useState([]); // <-- New state for online users
-  const [receivingCall, setReceivingCall] = useState(false);
-  const [caller, setCaller] = useState("");
-  const [callerSignal, setCallerSignal] = useState();
-  const [callAccepted, setCallAccepted] = useState(false);
-  const [incomingCallType, setIncomingCallType] = useState('');
-  const [otherUserId, setOtherUserId] = useState(null);
+  const [onlineUsers, setOnlineUsers] = useState([]);
+  
+  // Consolidated call state for better management
+  const [call, setCall] = useState({
+    isReceivingCall: false,
+    caller: "",
+    callerSignal: null,
+    callAccepted: false,
+    callType: '',
+    otherUser: null
+  });
 
   const myVideo = useRef();
   const userVideo = useRef();
@@ -39,25 +43,24 @@ function HomePage() {
         }
     }
     
-    // Listen for the list of online users from the server
-    socket.on('getUsers', (users) => {
-        setOnlineUsers(users);
-    });
+    socket.on('getUsers', (users) => setOnlineUsers(users));
 
     socket.on("call-incoming", (data) => {
-        setReceivingCall(true);
-        setCaller(data.from);
-        setCallerSignal(data.signal);
-        setIncomingCallType(data.callType);
+        setCall({
+            ...call,
+            isReceivingCall: true,
+            caller: data.from,
+            callerSignal: data.signal,
+            callType: data.callType
+        });
     });
 
     socket.on("call-ended", () => {
-        handleCallEnded();
+        leaveCall(false); // false means we are receiving the hangup
     });
     
     fetchContacts();
 
-    // Cleanup listeners when the component unmounts
     return () => {
         socket.off("getUsers");
         socket.off("call-incoming");
@@ -100,39 +103,46 @@ function HomePage() {
       return currentStream;
     } catch (error) {
       console.error("Error accessing media devices.", error);
+      alert("Could not get camera/microphone permission. Please check your device settings.");
     }
   };
 
-  const callUser = async (idToCall, callType) => {
-    setOtherUserId(idToCall);
-    const currentStream = await startMedia(callType);
+  const callUser = async (idToCall, type) => {
+    const currentStream = await startMedia(type);
     if (!currentStream) return;
 
     const peer = new Peer({
       initiator: true,
       trickle: false,
       stream: currentStream,
-      config: { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }, { urls: 'stun:stun1.l.google.com:19302' }] },
+      config: { iceServers: [{ urls: 'stun:stun.l.google.com:1932' }, { urls: 'stun:stun1.l.google.com:19302' }] },
     });
 
     peer.on("signal", (data) => {
       const token = localStorage.getItem('token');
       const decoded = jwtDecode(token);
-      socket.emit("call-user", { to: idToCall, from: decoded.user.id, signalData: data, callType: callType });
+      socket.emit("call-user", { to: idToCall, from: decoded.user.id, signalData: data, callType: type });
     });
 
-    peer.on("stream", (stream) => { if (userVideo.current) { userVideo.current.srcObject = stream; } });
-    socket.on("call-accepted", (signal) => { setCallAccepted(true); peer.signal(signal); });
+    peer.on("stream", (remoteStream) => {
+      if (userVideo.current) {
+        userVideo.current.srcObject = remoteStream;
+      }
+    });
+
+    socket.on("call-accepted", (signal) => {
+      setCall(prev => ({ ...prev, callAccepted: true, otherUser: idToCall }));
+      peer.signal(signal);
+    });
+
     connectionRef.current = peer;
   };
 
   const answerCall = async () => {
-    setCallAccepted(true);
-    setReceivingCall(false);
-    setOtherUserId(caller);
-    
-    const currentStream = await startMedia(incomingCallType);
+    const currentStream = await startMedia(call.callType);
     if (!currentStream) return;
+
+    setCall(prev => ({ ...prev, callAccepted: true, isReceivingCall: false, otherUser: call.caller }));
 
     const peer = new Peer({
       initiator: false,
@@ -141,28 +151,37 @@ function HomePage() {
       config: { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }, { urls: 'stun:stun1.l.google.com:19302' }] },
     });
 
-    peer.on("signal", (data) => { socket.emit("answer-call", { signal: data, to: caller }); });
-    peer.on("stream", (stream) => { userVideo.current.srcObject = stream; });
-    peer.signal(callerSignal);
+    peer.on("signal", (data) => {
+      socket.emit("answer-call", { signal: data, to: call.caller });
+    });
+
+    peer.on("stream", (remoteStream) => {
+      userVideo.current.srcObject = remoteStream;
+    });
+
+    peer.signal(call.callerSignal);
     connectionRef.current = peer;
   };
 
-  const handleCallEnded = () => {
+  const leaveCall = (isInitiator = true) => {
+    if (isInitiator) {
+      socket.emit('hang-up', { to: call.otherUser });
+    }
     if (connectionRef.current) {
       connectionRef.current.destroy();
     }
     if (stream) {
       stream.getTracks().forEach(track => track.stop());
     }
-    setCallAccepted(false);
-    setReceivingCall(false);
-    setOtherUserId(null);
     setStream(null);
-  };
-
-  const leaveCall = () => {
-    socket.emit('hang-up', { to: otherUserId });
-    handleCallEnded();
+    setCall({
+      isReceivingCall: false,
+      caller: "",
+      callerSignal: null,
+      callAccepted: false,
+      callType: '',
+      otherUser: null
+    });
   };
 
   const handleLogout = () => {
@@ -191,12 +210,7 @@ function HomePage() {
 
       <div className="add-contact-form">
         <form onSubmit={handleAddContact}>
-          <input
-            type="text"
-            placeholder="Enter Share ID to add contact"
-            value={addContactShareId}
-            onChange={(e) => setAddContactShareId(e.target.value)}
-          />
+          <input type="text" placeholder="Enter Share ID to add contact" value={addContactShareId} onChange={(e) => setAddContactShareId(e.target.value)} />
           <button type="submit">Add Contact</button>
         </form>
       </div>
@@ -206,15 +220,14 @@ function HomePage() {
               {stream && <video playsInline muted ref={myVideo} autoPlay style={{ width: "300px" }} />}
           </div>
           <div className="video">
-              {callAccepted ?
+              {call.callAccepted ?
               <video playsInline ref={userVideo} autoPlay style={{ width: "300px" }} /> :
               null}
           </div>
       </div>
 
       <div className="contact-list">
-        {contacts.length > 0 ? contacts.map((contact) => {
-          // Check if this contact's ID is in the onlineUsers array
+        {contacts.map((contact) => {
           const isOnline = onlineUsers.some(user => user.userId === contact._id);
           return (
             <div key={contact._id} className="contact-item">
@@ -222,22 +235,22 @@ function HomePage() {
                 <span className={`status-indicator ${isOnline ? 'online' : 'offline'}`}></span>
                 <p>{contact.username}</p>
               </div>
-              {callAccepted && otherUserId === contact._id ? (
-                <button className="hangup-button" onClick={leaveCall}>Hang Up</button>
-              ) : !callAccepted ? (
+              {call.callAccepted ? (
+                call.otherUser === contact._id && <button className="hangup-button" onClick={() => leaveCall(true)}>Hang Up</button>
+              ) : (
                 <div className="call-buttons">
                   <button className="call-button" onClick={() => callUser(contact._id, 'video')}>Video Call</button>
                   <button className="call-button" onClick={() => callUser(contact._id, 'voice')}>Voice Call</button>
                 </div>
-              ) : null}
+              )}
             </div>
           )
-        }) : <p>You have no contacts yet. Add one using their Share ID.</p>}
+        })}
       </div>
 
-      {receivingCall && !callAccepted ? (
+      {call.isReceivingCall && !call.callAccepted ? (
         <div className="call-notification">
-          <h1>Incoming {incomingCallType} call...</h1>
+          <h1>Incoming {call.callType} call...</h1>
           <button onClick={answerCall}>Answer</button>
         </div>
       ) : null}
